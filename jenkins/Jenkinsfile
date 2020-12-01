@@ -1,0 +1,65 @@
+pipeline {
+    environment {
+        BUILD_NUM = ''
+    }
+    agent any
+    tools {
+        maven 'maven'
+        jdk 'jdk'
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn -B -DskipTests clean package'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+        // stage('Deliver') {
+        //     steps {
+        //         sh 'sudo chmod a+x jenkins/scripts/deliver.sh'
+        //         sh './jenkins/scripts/deliver.sh'
+        //     }
+        // }
+        stage('Test Path') {
+            steps {
+                sh 'pwd'
+                sh 'ls target/'
+            }
+        }
+        stage ('Publish Artifacts') {
+        steps {
+            rtUpload (
+                buildName: JOB_NAME,
+                buildNumber: BUILD_NUMBER,
+                serverId: "jenkins-artifactory", // Obtain an Artifactory server instance, defined in Jenkins --> Manage:
+                spec: """{
+                            "files": [
+                                {
+                                    "pattern": "target/spring-boot-hello-world-1.0.0-SNAPSHOT.jar",
+                                    "target": "docker-eurus/spring-boot-hello-world-1.0.0-SNAPSHOT.jar",
+                                    "recursive": "false"
+                                }
+                            ]
+                    }"""   
+                )
+        }
+     } 
+     stage ('Publish build info') {
+            steps {
+                rtPublishBuildInfo (
+                    serverId: "jenkins-artifactory"
+                )
+            }
+        }
+  }
+}
+  
